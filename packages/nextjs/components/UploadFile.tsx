@@ -48,6 +48,10 @@ const UploadFile: React.FC = () => {
       const response = await axios.put(`${process.env.NEXT_PUBLIC_PUBLISHER}/v1/store`, fileContent);
 
       setUploadResult(response.data);
+      if (response.data.newlyCreated) {
+        console.log("File uploaded successfully!");
+        console.log("blobId:", response.data.newlyCreated.blobObject.blobId);
+      }
       setLoading(false);
     } catch (error) {
       console.error("Error uploading the file:", error);
@@ -77,7 +81,9 @@ const UploadFile: React.FC = () => {
       {uploadResult && (
         <div className="mt-6">
           <h2 className="text-xl font-semibold">Upload Result:</h2>
-          <pre className="bg-gray-100 p-3 rounded">{JSON.stringify(uploadResult, null, 2)}</pre>
+          {uploadResult.newlyCreated && uploadResult.newlyCreated.blobObject && (
+            <pre className="bg-gray-100 p-3 rounded">{uploadResult.newlyCreated.blobObject.blobId}</pre>
+          )}
         </div>
       )}
     </div>
