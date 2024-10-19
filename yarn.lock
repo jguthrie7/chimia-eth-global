@@ -2424,6 +2424,7 @@ __metadata:
     "@uniswap/v2-sdk": ~3.0.1
     abitype: 1.0.6
     autoprefixer: ~10.4.20
+    axios: ^1.7.7
     blo: ~1.0.1
     burner-connector: ~0.0.8
     daisyui: 4.12.10
@@ -5078,7 +5079,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"axios@npm:^1.6.7":
+"axios@npm:^1.6.7, axios@npm:^1.7.7":
   version: 1.7.7
   resolution: "axios@npm:1.7.7"
   dependencies:
