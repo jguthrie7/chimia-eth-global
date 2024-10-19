@@ -1,7 +1,6 @@
-# 🏗 Scaffold-ETH 2
+# Chimia Experiment Deployer
 
 <h4 align="center">
-  <a href="https://docs.scaffoldeth.io">Documentation</a> |
   <a href="https://scaffoldeth.io">Website</a>
 </h4>
 
