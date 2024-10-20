@@ -1,6 +1,8 @@
 // components/UploadFile.tsx
 import React, { useState } from "react";
 import axios from "axios";
+import { useAccount } from "wagmi";
+import { useScaffoldWriteContract } from "~~/hooks/scaffold-eth";
 
 interface BlobObject {
   id: string;
@@ -45,6 +47,10 @@ const UploadFile: React.FC = () => {
   const [uploadResult, setUploadResult] = useState<UploadResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [blobId, setBlobId] = useState<string | null>(null);
+  const [nftBlobId, setNftBlobId] = useState<string | null>(null);
+  const { writeContractAsync } = useScaffoldWriteContract("Experiments");
+  const { address } = useAccount();
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0] || null;
@@ -64,26 +70,90 @@ const UploadFile: React.FC = () => {
 
     try {
       const fileContent = await file.text(); // Read the file content as a string
+      const parsedFileContent = JSON.parse(fileContent);
+
+      console.log(parsedFileContent);
+      const nftMetadata = {
+        name: parsedFileContent.reaction.name,
+        description: parsedFileContent.reaction.description,
+        image: parsedFileContent.nft_metadata.image,
+        attributes: [
+          {
+            trait_type: "Trait Type",
+            value: "Trait Value",
+          },
+        ],
+      };
+
+      nftMetadata.attributes = [];
+
+      for (const [key, value] of Object.entries(parsedFileContent.nft_metadata)) {
+        if (key === "image") continue;
+        nftMetadata.attributes.push({
+          trait_type: key,
+          value: value as string,
+        });
+        if (blobId) {
+          nftMetadata.attributes.push({
+            trait_type: "Full Results",
+            value: blobId,
+          });
+        }
+      }
 
       // Make the PUT request to upload to Walrus
+      console.log("Uploading file to Walrus...");
       const response = await axios.put<UploadResponse>(`${process.env.NEXT_PUBLIC_PUBLISHER}/v1/store`, fileContent, {
         headers: {
           "Content-Type": "application/json",
         },
       });
+      console.log("Uploading NFT file to Walrus...");
+      const responseNFT = await axios.put<UploadResponse>(
+        `${process.env.NEXT_PUBLIC_PUBLISHER}/v1/store`,
+        nftMetadata,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      );
+      console.log("done uploading NFT file to Walrus...");
+      console.log("NFT Blob ID:", responseNFT.data);
 
       setUploadResult(response.data);
+
+      let tempBlobId = "";
+      let tempNftBlobId = "";
 
       if ("newlyCreated" in response.data) {
         console.log("File uploaded successfully!");
         console.log("blobId:", response.data.newlyCreated.blobObject.blobId);
+        tempBlobId = response.data.newlyCreated.blobObject.blobId;
       } else if ("alreadyCertified" in response.data) {
         console.log("Data has already been uploaded.");
         console.log("blobId:", response.data.alreadyCertified.blobId);
+        tempBlobId = response.data.alreadyCertified.blobId;
         setError("Data has already been uploaded.");
       }
-
+      if ("newlyCreated" in responseNFT.data) {
+        tempNftBlobId = responseNFT.data.newlyCreated.blobObject.blobId;
+        console.log("NFT Blob ID:", tempNftBlobId);
+      } else if ("alreadyCertified" in responseNFT.data) {
+        tempNftBlobId = responseNFT.data.alreadyCertified.blobId;
+        console.log("NFT Blob ID:", tempNftBlobId);
+        setError("Data has already been uploaded.");
+      }
+      setBlobId(tempBlobId);
+      setNftBlobId(tempNftBlobId);
       setLoading(false);
+      console.log("Minting NFT...");
+      const tx = await writeContractAsync({
+        functionName: "mint",
+        args: [address, "https://aggregator.walrus-testnet.walrus.space/v1/" + tempNftBlobId],
+      });
+      console.log("tx:", tx);
+      console.log("NFT minted!");
     } catch (error: any) {
       console.error("Error uploading the file:", error);
       setError("An error occurred while uploading the file.");
@@ -124,7 +194,8 @@ const UploadFile: React.FC = () => {
       {uploadResult && "newlyCreated" in uploadResult && (
         <div className="mt-6">
           <h2 className="text-xl font-semibold">Upload Result:</h2>
-          <pre className="bg-gray-100 p-3 rounded">{JSON.stringify(uploadResult.newlyCreated.blobObject, null, 2)}</pre>
+          <pre className="bg-gray-100 p-3 rounded">{blobId}</pre>
+          <pre className="bg-gray-100 p-3 rounded">{nftBlobId}</pre>
         </div>
       )}
     </div>
