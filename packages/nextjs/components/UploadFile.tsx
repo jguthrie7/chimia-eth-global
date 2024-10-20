@@ -183,7 +183,7 @@ const UploadFile: React.FC = () => {
         {loading ? "Uploading..." : "Upload"}
       </button>
 
-      {error && (
+      {/* {error && (
         <div className="mt-6 p-4 bg-red-100 text-red-700 rounded">
           <p>{error}</p>
           {uploadResult && "alreadyCertified" in uploadResult && (
@@ -200,7 +200,7 @@ const UploadFile: React.FC = () => {
           <pre className="bg-gray-100 p-3 rounded">{blobId}</pre>
           <pre className="bg-gray-100 p-3 rounded">{nftBlobId}</pre>
         </div>
-      )}
+      )} */}
     </div>
   );
 };
