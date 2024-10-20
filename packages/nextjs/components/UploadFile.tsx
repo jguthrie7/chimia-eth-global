@@ -1,4 +1,3 @@
-// components/UploadFile.tsx
 import React, { useState } from "react";
 import axios from "axios";
 import { useAccount } from "wagmi";
@@ -49,8 +48,14 @@ const UploadFile: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [blobId, setBlobId] = useState<string | null>(null);
   const [nftBlobId, setNftBlobId] = useState<string | null>(null);
+  const [logMessages, setLogMessages] = useState<string[]>([]); // New state for log messages
   const { writeContractAsync } = useScaffoldWriteContract("Experiments");
   const { address } = useAccount();
+
+  const addLogMessage = (message: string) => {
+    // setLogMessages(prevMessages => [message, ...prevMessages]);
+    setLogMessages(prevMessages => [message]);
+  };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0] || null;
@@ -72,7 +77,7 @@ const UploadFile: React.FC = () => {
       const fileContent = await file.text(); // Read the file content as a string
       const parsedFileContent = JSON.parse(fileContent);
 
-      console.log(parsedFileContent);
+      addLogMessage("Parsing file content...");
       const nftMetadata = {
         name: parsedFileContent.reaction.name,
         description: parsedFileContent.reaction.description,
@@ -87,10 +92,11 @@ const UploadFile: React.FC = () => {
 
       nftMetadata.attributes = [];
 
-      console.log(nftMetadata);
+      // Log the parsed metadata
+      addLogMessage(`Parsed NFT Metadata`);
 
       // Make the PUT request to upload to Walrus
-      console.log("Uploading file to Walrus...");
+      addLogMessage("Uploading file to Walrus...");
       const response = await axios.put<UploadResponse>(`${process.env.NEXT_PUBLIC_PUBLISHER}/v1/store`, fileContent, {
         headers: {
           "Content-Type": "application/json",
@@ -101,14 +107,13 @@ const UploadFile: React.FC = () => {
       let tempNftBlobId = "";
 
       if ("newlyCreated" in response.data) {
-        console.log("File uploaded successfully!");
-        console.log("blobId:", response.data.newlyCreated.blobObject.blobId);
+        addLogMessage("File uploaded successfully!");
         tempBlobId = response.data.newlyCreated.blobObject.blobId;
+        addLogMessage(`Blob ID: ${tempBlobId}`);
       } else if ("alreadyCertified" in response.data) {
-        console.log("Data has already been uploaded.");
-        console.log("blobId:", response.data.alreadyCertified.blobId);
+        addLogMessage("Data has already been uploaded.");
         tempBlobId = response.data.alreadyCertified.blobId;
-        setError("Data has already been uploaded.");
+        // setError("Data has already been uploaded.");
       }
 
       for (const [key, value] of Object.entries(parsedFileContent.nft_metadata)) {
@@ -118,13 +123,15 @@ const UploadFile: React.FC = () => {
           value: value as string,
         });
       }
+
       if (tempBlobId) {
         nftMetadata.attributes.push({
           trait_type: "Full Results",
           value: `https://aggregator.walrus-testnet.walrus.space/v1/${tempBlobId}`,
         });
       }
-      console.log("Uploading NFT file to Walrus...");
+
+      addLogMessage("Uploading NFT metadata to Walrus...");
       const responseNFT = await axios.put<UploadResponse>(
         `${process.env.NEXT_PUBLIC_PUBLISHER}/v1/store`,
         nftMetadata,
@@ -134,39 +141,40 @@ const UploadFile: React.FC = () => {
           },
         },
       );
-      console.log("done uploading NFT file to Walrus...");
-      console.log("NFT Blob ID:", responseNFT.data);
+      addLogMessage("NFT metadata uploaded successfully.");
 
       setUploadResult(response.data);
 
       if ("newlyCreated" in responseNFT.data) {
         tempNftBlobId = responseNFT.data.newlyCreated.blobObject.blobId;
-        console.log("NFT Blob ID:", tempNftBlobId);
+        addLogMessage(`NFT Blob ID: ${tempNftBlobId}`);
       } else if ("alreadyCertified" in responseNFT.data) {
         tempNftBlobId = responseNFT.data.alreadyCertified.blobId;
-        console.log("NFT Blob ID:", tempNftBlobId);
-        setError("Data has already been uploaded.");
+        addLogMessage(`NFT Blob ID (already certified): ${tempNftBlobId}`);
+        // setError("Data has already been uploaded.");
       }
+
       setBlobId(tempBlobId);
       setNftBlobId(tempNftBlobId);
       setLoading(false);
-      console.log("Minting NFT...");
+
+      addLogMessage("Minting NFT...");
       const tx = await writeContractAsync({
         functionName: "mint",
         args: [address, "https://aggregator.walrus-testnet.walrus.space/v1/" + tempNftBlobId],
       });
-      console.log("tx:", tx);
-      console.log("NFT minted!");
+      addLogMessage(`Transaction: ${JSON.stringify(tx)}`);
+      addLogMessage("NFT minted successfully!");
     } catch (error: any) {
-      console.error("Error uploading the file:", error);
-      setError("An error occurred while uploading the file.");
+      addLogMessage("Error uploading the file.");
+      setError(`An error occurred - ${error}`);
       setLoading(false);
     }
   };
 
   return (
     <div className="p-5">
-      <h1 className="text-2xl font-bold mb-4">Upload JSON File</h1>
+      <h1 className="text-2xl font-bold mb-4">Upload Experimental Data</h1>
 
       <input
         type="file"
@@ -183,24 +191,24 @@ const UploadFile: React.FC = () => {
         {loading ? "Uploading..." : "Upload"}
       </button>
 
-      {/* {error && (
+      {/* Display error messages */}
+      {error && (
         <div className="mt-6 p-4 bg-red-100 text-red-700 rounded">
           <p>{error}</p>
-          {uploadResult && "alreadyCertified" in uploadResult && (
-            <p>
-              Blob ID: <span className="font-mono">{uploadResult.alreadyCertified.blobId}</span>
-            </p>
-          )}
         </div>
       )}
 
-      {uploadResult && "newlyCreated" in uploadResult && (
-        <div className="mt-6">
-          <h2 className="text-xl font-semibold">Upload Result:</h2>
-          <pre className="bg-gray-100 p-3 rounded">{blobId}</pre>
-          <pre className="bg-gray-100 p-3 rounded">{nftBlobId}</pre>
+      {/* Display status log */}
+      <div className="mt-6 p-4 bg-gray-100 text-gray-700 rounded max-h-64 overflow-y-auto">
+        <h2 className="text-lg font-semibold mb-2">Status</h2>
+        <div>
+          {logMessages.map((message, index) => (
+            <p key={index} className="text-sm mb-1">
+              {message}
+            </p>
+          ))}
         </div>
-      )} */}
+      </div>
     </div>
   );
 };
