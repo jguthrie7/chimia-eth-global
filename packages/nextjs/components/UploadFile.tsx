@@ -87,19 +87,7 @@ const UploadFile: React.FC = () => {
 
       nftMetadata.attributes = [];
 
-      for (const [key, value] of Object.entries(parsedFileContent.nft_metadata)) {
-        if (key === "image") continue;
-        nftMetadata.attributes.push({
-          trait_type: key,
-          value: value as string,
-        });
-        if (blobId) {
-          nftMetadata.attributes.push({
-            trait_type: "Full Results",
-            value: blobId,
-          });
-        }
-      }
+      console.log(nftMetadata);
 
       // Make the PUT request to upload to Walrus
       console.log("Uploading file to Walrus...");
@@ -108,6 +96,34 @@ const UploadFile: React.FC = () => {
           "Content-Type": "application/json",
         },
       });
+
+      let tempBlobId = "";
+      let tempNftBlobId = "";
+
+      if ("newlyCreated" in response.data) {
+        console.log("File uploaded successfully!");
+        console.log("blobId:", response.data.newlyCreated.blobObject.blobId);
+        tempBlobId = response.data.newlyCreated.blobObject.blobId;
+      } else if ("alreadyCertified" in response.data) {
+        console.log("Data has already been uploaded.");
+        console.log("blobId:", response.data.alreadyCertified.blobId);
+        tempBlobId = response.data.alreadyCertified.blobId;
+        setError("Data has already been uploaded.");
+      }
+
+      for (const [key, value] of Object.entries(parsedFileContent.nft_metadata)) {
+        if (key === "image") continue;
+        nftMetadata.attributes.push({
+          trait_type: key,
+          value: value as string,
+        });
+      }
+      if (tempBlobId) {
+        nftMetadata.attributes.push({
+          trait_type: "Full Results",
+          value: `https://aggregator.walrus-testnet.walrus.space/v1/${tempBlobId}`,
+        });
+      }
       console.log("Uploading NFT file to Walrus...");
       const responseNFT = await axios.put<UploadResponse>(
         `${process.env.NEXT_PUBLIC_PUBLISHER}/v1/store`,
@@ -123,19 +139,6 @@ const UploadFile: React.FC = () => {
 
       setUploadResult(response.data);
 
-      let tempBlobId = "";
-      let tempNftBlobId = "";
-
-      if ("newlyCreated" in response.data) {
-        console.log("File uploaded successfully!");
-        console.log("blobId:", response.data.newlyCreated.blobObject.blobId);
-        tempBlobId = response.data.newlyCreated.blobObject.blobId;
-      } else if ("alreadyCertified" in response.data) {
-        console.log("Data has already been uploaded.");
-        console.log("blobId:", response.data.alreadyCertified.blobId);
-        tempBlobId = response.data.alreadyCertified.blobId;
-        setError("Data has already been uploaded.");
-      }
       if ("newlyCreated" in responseNFT.data) {
         tempNftBlobId = responseNFT.data.newlyCreated.blobObject.blobId;
         console.log("NFT Blob ID:", tempNftBlobId);
