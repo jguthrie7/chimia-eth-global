@@ -89,6 +89,10 @@ const config: HardhatUserConfig = {
       url: `https://rpc.public.zkevm-test.net`,
       accounts: [deployerPrivateKey],
     },
+    polygonAmoy: {
+      url: `https://80002.rpc.thirdweb.com`,
+      accounts: [deployerPrivateKey],
+    },
     gnosis: {
       url: "https://rpc.gnosischain.com",
       accounts: [deployerPrivateKey],
